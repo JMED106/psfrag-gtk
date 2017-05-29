@@ -1,8 +1,27 @@
-import re, os
+""" v 0.0.1
+    Copyright 2016 Jose M. Esnaola
+
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import os
+import re
 import sys
 import threading
-import gi
-# gi.require_version('Gtk', '3.0')
+
+# import gi
+# gi.require_version('Gtk', '3.10')
 from gi.repository import Gtk, GObject
 
 import logging
@@ -42,7 +61,7 @@ class Data:
         self.pdf = pdf
         self.svg = svg
         self.png = png
-        self.density = density # Default density for png conversion
+        self.density = density  # Default density for png conversion
 
         # List where the tags and substitutions are stored
         self.labels = [{"label": "", "latex": ""}]
@@ -61,6 +80,8 @@ class Data:
         f = open(self.epspath, 'r')
         self.epsimage = f.read()
         # Prepare the subs file to read (tags and replacements)
+        self.subspre = None
+        self.subsps = None
         if subs:
             f2 = open(self.subspath, 'r')
             self.subs = f2.read()
@@ -71,19 +92,19 @@ class Data:
             self.tags = []
             self.reps = []
 
-    def check_file(self, file, critical=True):
-        if not os.path.exists(file):
+    def check_file(self, fin, critical=True):
+        if not os.path.exists(fin):
             if critical:
-                raise IOError('File %s/%s does not exist.' % (self.cwd, file))
+                raise IOError('File %s/%s does not exist.' % (self.cwd, fin))
             else:
-                self.logger.error('File %s/%s does not exist.' % (self.cwd, file))
-                return  False
+                self.logger.error('File %s/%s does not exist.' % (self.cwd, fin))
+                return False
         else:
-            return  True
+            return True
 
-    def check_extension(self, file, extension):
-        if not file.endswith(extension):
-            self.logger.error("File %s is not an %s file." % (file, extension))
+    def check_extension(self, fin, extension):
+        if not fin.endswith(extension):
+            self.logger.error("File %s is not an %s file." % (fin, extension))
             sys.exit(1)
 
     def read_subs(self):
@@ -94,12 +115,12 @@ class Data:
         reps = []
         plenght = len("\\psfrag{")
         for k, psfrag in enumerate(psfrags):
-            if psfrag != []:
+            if psfrag:
                 tag = re.findall(r'\\psfrag{(.*?)}', psfrag)
                 length = plenght + len(tag[0])
                 tags.append(tag[0])
                 rep = re.findall(r']{(.*?)} %EndPs', psfrag[length:])
-                if rep == []:
+                if not rep:
                     rep = re.findall(r']{(.*?)}%EndPs', psfrag[length:])[0]
                 else:
                     rep = rep[0]
@@ -130,6 +151,8 @@ class PSFrag:
         self.ending = "\\end{figure}\n" \
                       "\\end{document}"
 
+        self.subsname = None
+
     def check_tag(self, index):
         tag = self.d.labels[index]['label']
         self.logger.debug("Searching for %s ..." % tag)
@@ -156,7 +179,7 @@ class PSFrag:
 
     def do_replace(self):
         # Create latex file
-        filedir = "%s" % (self.d.epsdir)
+        filedir = "%s" % self.d.epsdir
         filename = "%s/%s" % (filedir, self.d.epsname)
         latexname = "%s/%s.tex" % (filedir, self.d.epsname)
         self.logger.debug("Writing latex file in %s ..." % latexname)
@@ -170,7 +193,8 @@ class PSFrag:
 
         # Compile latex file
         self.logger.debug("Compiling LaTeX ...")
-        os.popen('latex -output-directory=%s -shell-escape -interaction=nonstopmode -file-line-error  %s | grep ".*:[0-9]*:.*"' % (filedir, latexname))
+        os.popen('latex -output-directory=%s -shell-escape -interaction=nonstopmode -file-line-error  %s '
+                 '| grep ".*:[0-9]*:.*"' % (filedir, latexname))
         # os.popen('latex %s' % latexname)
         self.logger.debug("Done!")
         self.logger.debug("Transforming dvi -> ps -> pdf -> pdf-crop -> ps-crop -> eps-crop ...")
@@ -214,7 +238,7 @@ class PSFrag:
 class MainGui:
     def __init__(self, data=None, psfrag=None):
         if data is None:
-            self.d= Data()
+            self.d = Data()
         else:
             self.d = data
 
@@ -262,10 +286,10 @@ class MainGui:
         self.builder.connect_signals(signals)
         self.pbar = self.builder.get_object("progressbar1")
         self.repbutton = self.builder.get_object("replace")
-
+        self.timeout_id = None
 
         # We load the replacements from the subs file, if any:
-        if self.d.tags != []:
+        if self.d.tags:
             self.logger.debug("Setting default tags and replacements...")
             for tag, rep in zip(self.d.tags, self.d.reps):
                 label.set_text(tag)
@@ -328,8 +352,8 @@ class MainGui:
 
     def on_add_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
-        newBox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        self.listbox.insert(newBox, -1)
+        newbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.listbox.insert(newbox, -1)
         label_entry = Gtk.Entry()
         label_entry.connect("activate", self.on_label_activate)
         latex_entry = Gtk.Entry()
@@ -337,9 +361,9 @@ class MainGui:
         button = Gtk.Button(label="Check", image=Gtk.Image(stock="gtk-refresh"))
         button.connect("clicked", self.on_check_clicked)
 
-        newBox.pack_start(label_entry, True, True, padding=4)
-        newBox.pack_start(latex_entry, True, True, padding=4)
-        newBox.pack_start(button, True, True, padding=4)
+        newbox.pack_start(label_entry, True, True, padding=4)
+        newbox.pack_start(latex_entry, True, True, padding=4)
+        newbox.pack_start(button, True, True, padding=4)
         self.d.labels.append({"label": "", "latex": ""})
 
         self.window.show_all()
@@ -366,6 +390,7 @@ class MainGui:
             event.set_image(Gtk.Image(stock="gtk-dialog-error"))
 
     def on_replace_clicked(self, event):
+        self.logger.debug('Button %s pressed' % event)
         self.repbutton.set_image(Gtk.Image(stock='gtk-dialog-warning'))
         self.timeout_id = GObject.timeout_add(50, self.on_timeout, True)
         thread = threading.Thread(target=self.outside_task)
@@ -382,5 +407,3 @@ class MainGui:
         self.repbutton.set_image(Gtk.Image(stock='gtk-apply'))
         GObject.source_remove(self.timeout_id)
         self.pbar.set_fraction(0.0)
-
-

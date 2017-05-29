@@ -22,15 +22,14 @@ import sys
 import logging.config
 from colorlog import ColoredFormatter
 import os
-# import string
-import gi
-# gi.require_version('Gtk', '3.0')
+# import gi
+# gi.require_version('Gtk', '3.10')
 from gi.repository import Gtk
 from gui import MainGui, Data, PSFrag
 
 __author__ = 'Jose M. Esnaola Acebes'
 
-""" Graphical script to replace texts on EPS files using LaTeX engine.
+""" Graphical script to replace texts on EPS files using LaTeX engine and psfrag.
 """
 
 # We first try to parse optional configuration files:
@@ -81,9 +80,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('epsfile', type=str, help='.eps file in which perform the substitutions.')
 # The default substitution file will be in the same directory as the script.
-parser.add_argument('-s', '--subs', default='%s/subs.tex' % scriptdir, dest='subs', type=str, help='.tex file where the substitutions are located.')
+parser.add_argument('-s', '--subs', default='%s/subs.tex' % scriptdir, dest='subs', type=str,
+                    help='.tex file where the substitutions are located.')
 parser.add_argument('-db', '--debug', default="DEBUG", dest='db', metavar='<debug>',
-                     choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
+                    choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
 parser.add_argument('-g', '--nogui', default=False, dest='nogui', action='store_true')
 parser.add_argument('-pdf', '--pdf', default=False, dest='pdf', action='store_true')
 parser.add_argument('-svg', '--svg', default=False, dest='svg', action='store_true')
@@ -106,7 +106,7 @@ psfrag = PSFrag(data)
 
 if args['nogui']:
     logger.info("Non-graphical UI selected.")
-    if data.tags != []:
+    if data.tags:
         for tag, rep in zip(data.tags, data.reps):
             if len(data.labels) == 1:
                 data.labels[0]['label'] = tag
