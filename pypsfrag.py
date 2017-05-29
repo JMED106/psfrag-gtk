@@ -33,9 +33,9 @@ __author__ = 'Jose M. Esnaola Acebes'
 """ Graphical script to replace texts on EPS files using LaTeX engine and psfrag.
 """
 
-print "\n\tPyPSfrag  Copyright (C) 2017  Jose M. Esnaola-Acebes\n"\
-      "\tThis program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE.txt.\n"\
-      "\tThis is free software, and you are welcome to redistribute it\n"\
+print "\n\tPyPSfrag  Copyright (C) 2017  Jose M. Esnaola-Acebes\n" \
+      "\tThis program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE.txt.\n" \
+      "\tThis is free software, and you are welcome to redistribute it\n" \
       "\tunder certain conditions; see LICENCE.txt for details.\n"
 
 # We first try to parse optional configuration files:
@@ -82,9 +82,10 @@ logger.debug('We are working in %s' % str(cwd))
 logger.debug('Formatting parser')
 parser = argparse.ArgumentParser(
     description='Script to convert selected tags in eps files into latex.',
-    usage='python %s input.eps [-O <options>]' % sys.argv[0])
+    usage='python %s  [-f input.eps] [-O <options>]' % sys.argv[0])
 
-parser.add_argument('epsfile', type=str, help='.eps file in which perform the substitutions.')
+parser.add_argument('-f', '--epsfile', default=None, dest='epsfile', type=str,
+                    help='.eps file in which perform the substitutions.')
 # The default substitution file will be in the same directory as the script.
 parser.add_argument('-s', '--subs', default='%s/subs.tex' % scriptdir, dest='subs', type=str,
                     help='.tex file where the substitutions are located.')
@@ -117,6 +118,9 @@ psfrag = PSFrag(data)
 
 if args['nogui']:
     logger.info("Non-graphical UI selected.")
+    if data.epspath is None:
+        logger.error("Select a .eps file using -f option.")
+        exit(-1)
     if data.tags:
         for tag, rep in zip(data.tags, data.reps):
             if len(data.labels) == 1:

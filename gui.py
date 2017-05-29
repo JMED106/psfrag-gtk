@@ -18,44 +18,38 @@
 
 import os
 import re
-import sys
 import threading
-
+import urllib
 # import gi
 # gi.require_version('Gtk', '3.10')
-from gi.repository import Gtk, GObject
+from gi.repository import Gtk, GObject, Gdk
 
 import logging
 
 logging.getLogger('gui').addHandler(logging.NullHandler())
+TARGET_TYPE_URI_LIST = 0
 
 
 class Data:
     def __init__(self, filepath="example.eps", subspath="subs.tex", cwd="./",
                  pdf=False, svg=False, png=False, density=300):
         self.logger = logging.getLogger('gui.Data')
-        # Paths
-        self.epspath = filepath
+
         self.subspath = subspath
         # Files
         self.subsfile = os.path.basename(subspath)
         self.logger.debug('Subs file: %s' % self.subsfile)
-        self.epsfile = os.path.basename(filepath)
-        self.logger.debug('Eps file: %s' % self.epsfile)
+
         # Files names (without extension)
         self.subsname = self.subsfile[0:-4]
         self.logger.debug('Subs file name: %s' % self.subsname)
-        self.epsname = self.epsfile[0:-4]
-        self.logger.debug('Eps file name: %s' % self.epsname)
-        # Dirs
-        self.epsdir = os.path.dirname(filepath)
-        if self.epsdir == "":
-            self.epsdir = "./"
-        self.subsdir = os.path.dirname(subspath)
-        self.logger.debug('Eps directory: %s' % self.epsdir)
-        self.logger.debug('Subs directory: %s' % self.subsdir)
+        self.ferror = 1
 
+        # Dirs
+        self.subsdir = os.path.dirname(subspath)
+        self.logger.debug('Subs directory: %s' % self.subsdir)
         self.cwd = cwd
+        self.epscwd = cwd
 
         # Output format options
         self.eps = True
@@ -66,20 +60,21 @@ class Data:
 
         # List where the tags and substitutions are stored
         self.labels = [{"label": "", "latex": ""}]
+        self.epsimage = 1
+
+        # Paths
+        if filepath is None:
+            self.epspath = None
+            self.epsfile = None
+            self.epsname = None
+            self.epsdir = None
+        else:
+            self.open_epsfile(filepath)
 
         # Checking files
-        self.logger.debug("Checking files ...")
-        self.check_file(self.epspath)
         subs = self.check_file(self.subspath, False)
+        self.check_extension(self.subsfile, 'tex')
 
-        # Checking extensions
-        self.logger.debug("Checking extensions ...")
-        for f, ext in zip([self.epsfile, self.subsfile], ['eps', 'tex']):
-            self.check_extension(f, ext)
-
-        # Prepare the eps file to read (tags)
-        f = open(self.epspath, 'r')
-        self.epsimage = f.read()
         # Prepare the subs file to read (tags and replacements)
         self.subspre = None
         self.subsps = None
@@ -93,7 +88,31 @@ class Data:
             self.tags = []
             self.reps = []
 
+    def open_epsfile(self, filepath):
+        if filepath[0] == '~':
+            self.logger.debug(filepath)
+            self.epspath = os.path.expanduser(filepath)
+            self.logger.debug(self.epspath)
+        else:
+            self.epspath = filepath
+        self.logger.info("Loading %s ..." % self.epspath)
+        self.epsfile = os.path.basename(self.epspath)
+        self.logger.debug('Eps file: %s' % self.epsfile)
+        self.epsname = self.epsfile[0:-4]
+        self.logger.debug('Eps file name: %s' % self.epsname)
+        self.epsdir = os.path.dirname(self.epspath)
+        self.epscwd = self.epsdir
+        if self.epsdir == "":
+            self.epsdir = "./"
+        self.logger.debug('Eps directory: %s' % self.epsdir)
+        self.check_file(self.epspath)
+        self.ferror = self.check_extension(self.epsfile, 'eps')
+        # Prepare the eps file to read (tags)
+        f = open(self.epspath, 'r')
+        self.epsimage = f.read()
+
     def check_file(self, fin, critical=True):
+        self.logger.debug("Checking %s file ..." % fin)
         if not os.path.exists(fin):
             if critical:
                 raise IOError('File %s/%s does not exist.' % (self.cwd, fin))
@@ -104,16 +123,24 @@ class Data:
             return True
 
     def check_extension(self, fin, extension):
+        self.logger.debug("Checking %s extension ..." % fin)
         if not fin.endswith(extension):
-            self.logger.error("File %s is not an %s file." % (fin, extension))
-            sys.exit(1)
+            self.logger.error("File %s is not a %s file." % (fin, extension))
+            return 1
+        else:
+            return 0
 
     def read_subs(self):
         self.subspre = re.findall(r'% BEGIN INFO.*?% END INFO\n', self.subs, re.DOTALL)
         self.subsps = re.findall(r'% BEGIN PS(.*?)% END PS\n', self.subs, re.DOTALL)
-        psfrags = re.findall(r'\n.*?%EndPs', self.subsps[0], re.DOTALL)
         tags = []
         reps = []
+        if self.subsps:
+            psfrags = re.findall(r'\n.*?%EndPs', self.subsps[0], re.DOTALL)
+        else:
+            self.logger.warning('I did not find any psfrag commands ...')
+            return tags, reps
+
         plenght = len("\\psfrag{")
         for k, psfrag in enumerate(psfrags):
             if psfrag:
@@ -170,7 +197,13 @@ class PSFrag:
         self.subsname = filename
         self.logger.debug("Writing substitution file in %s ..." % filename)
         f = open(filename, 'w')
-        f.write(self.d.subspre[0])
+        if self.d.subspre:
+            f.write(self.d.subspre[0])
+        else:
+            f.write("% BEGIN INFO\n")
+            f.write("% END INFO\n")
+            self.logger.warning("Something is not going ok with %s ..." % filename)
+            self.logger.warning("There are no tags to replace ...")
         f.write("% BEGIN PS\n")
         for row in self.d.labels:
             f.write("\\psfrag{" + row['label'] + "}[][]{" + row['latex'] + "} %EndPs\n")
@@ -212,24 +245,25 @@ class PSFrag:
         self.logger.debug("Done!")
 
         if self.d.svg:
-            self.logger.debug("Creating SVG file ...")
+            self.logger.info("Creating SVG file ...")
             os.popen('pdf2svg %s-crop.pdf %s-latex.svg' % (filename, filename))
-            self.logger.debug("Done!")
+            self.logger.info("Done!")
 
         if self.d.png:
-            self.logger.debug("Creating png file, with density %d ..." % self.d.density)
+            self.logger.info("Creating png file, with density %d ..." % self.d.density)
             os.popen('convert -density %d %s-crop.pdf %s-latex.png' % (self.d.density, filename, filename))
-            self.logger.debug("Done!")
+            self.logger.info("Done!")
 
         if self.d.pdf:
-            self.logger.debug("Creating pdf file ...")
+            self.logger.info("Creating pdf file ...")
             os.popen('mv %s-crop.pdf %s-latex.pdf' % (filename, filename))
-            self.logger.debug("Done!")
+            self.logger.info("Done!")
         else:
             os.popen('rm %s-crop.pdf' % filename)
 
         if self.d.eps:
             os.popen('mv %s-crop.eps %s-latex.eps' % (filename, filename))
+            self.logger.info("New EPS file is %s-latex.eps." % filename)
         else:
             os.popen('rm %s-crop.eps' % filename)
 
@@ -271,6 +305,9 @@ class MainGui:
         self.im_ok = self.builder.get_object("image3")
         label = self.builder.get_object("entry2")
         latex = self.builder.get_object("entry3")
+        self.openentry = self.builder.get_object("fileentry")
+        if self.d.epspath is not None:
+            self.openentry.set_text(self.d.epspath)
 
         signals = {"on_exit_clicked": self.on_exit_clicked,
                    "gtk_main_quit": Gtk.main_quit,
@@ -283,7 +320,16 @@ class MainGui:
                    "on_latex_activate": self.on_latex_activate,
                    "on_add_clicked": self.on_add_clicked,
                    "on_check_clicked": self.on_check_clicked,
-                   "on_replace_clicked": self.on_replace_clicked}
+                   "on_replace_clicked": self.on_replace_clicked,
+                   "on_open_clicked": self.on_open_clicked,
+                   "on_fileentry_activate": self.on_fileentry_activate,
+                   "on_fileentry_drag_data_received": self.on_drag_data}
+
+        dnd_list = [Gtk.TargetEntry.new("text/uri-list", 0, TARGET_TYPE_URI_LIST)]
+
+        self.window.drag_dest_set(Gtk.DestDefaults.MOTION |
+                                  Gtk.DestDefaults.HIGHLIGHT | Gtk.DestDefaults.DROP,
+                                  dnd_list, Gdk.DragAction.COPY)
         self.builder.connect_signals(signals)
         self.pbar = self.builder.get_object("progressbar1")
         self.repbutton = self.builder.get_object("replace")
@@ -303,6 +349,56 @@ class MainGui:
     def on_exit_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
         Gtk.main_quit()
+
+    def on_open_clicked(self, event):
+        self.logger.debug('Button %s pressed' % event)
+        dialog = Gtk.FileChooserDialog("Please choose a file", self.window, Gtk.FileChooserAction.OPEN,
+                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+        dialog.set_current_folder(self.d.epscwd)
+        self.add_filters(dialog)
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            self.logger.debug("Open clicked")
+            self.logger.debug("File selected: " + dialog.get_filename())
+            self.d.open_epsfile(dialog.get_filename())
+            self.openentry.set_text(self.d.epspath)
+        elif response == Gtk.ResponseType.CANCEL:
+            self.logger.debug("Cancel clicked")
+
+        dialog.destroy()
+
+    def on_fileentry_activate(self, event):
+        self.logger.debug('Text on %s modified' % event)
+        filename = event.get_text()
+        self.d.open_epsfile(filename)
+
+    def on_drag_data(self, event, context, x, y, selection, target_type, timestamp):
+        self.logger.debug('Something dropped on %s' % event)
+        self.logger.debug('Target type: %s' % target_type)
+        if target_type == TARGET_TYPE_URI_LIST:
+            self.logger.debug(selection.get_data())
+            uri = selection.get_data().strip('\r\n\x00')
+            uri_splitted = uri.split()  # we may have more than one file dropped
+            for uri in uri_splitted:
+                path = self.get_file_path_from_dnd_dropped_uri(uri)
+                if os.path.isfile(path):  # is it file?
+                    self.logger.debug("Dropped file name: %s" % path)
+                    self.d.open_epsfile(path)
+
+    @staticmethod
+    def get_file_path_from_dnd_dropped_uri(uri):
+        # get the path to file
+        path = ""
+        if uri.startswith('file:\\\\\\'):  # windows
+            path = uri[8:]  # 8 is len('file:///')
+        elif uri.startswith('file://'):  # nautilus, rox
+            path = uri[7:]  # 7 is len('file://')
+        elif uri.startswith('file:'):  # xffm
+            path = uri[5:]  # 5 is len('file:')
+
+        path = urllib.url2pathname(path)  # escape special chars
+        path = path.strip('\r\n\x00')  # remove \r\n and NULL
+        return path
 
     def on_eps_toggled(self, event):
         self.logger.debug('Button %s pressed' % event)
@@ -382,20 +478,36 @@ class MainGui:
         rowindex = listboxrow.get_index()
         self.listbox.select_row(listboxrow)
         # Run a function of rowindex
-        exists = self.pf.check_tag(rowindex)
-        if exists:
-            self.logger.info("Tag %s found." % self.d.labels[rowindex]['label'])
-            event.set_image(Gtk.Image(stock="gtk-apply"))
+        if self.d.epspath:
+            exists = self.pf.check_tag(rowindex)
+            if exists:
+                self.logger.info("Tag %s found." % self.d.labels[rowindex]['label'])
+                event.set_image(Gtk.Image(stock="gtk-apply"))
+            else:
+                self.logger.warning("Tag %s not found." % self.d.labels[rowindex]['label'])
+                event.set_image(Gtk.Image(stock="gtk-dialog-error"))
         else:
-            self.logger.warning("Tag %s not found." % self.d.labels[rowindex]['label'])
+            exists = False
+            self.logger.warning("There is no EPS file loaded.")
             event.set_image(Gtk.Image(stock="gtk-dialog-error"))
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.CANCEL,
+                                       "Load an EPS file first.")
+            dialog.run()
+            dialog.destroy()
 
     def on_replace_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
-        self.repbutton.set_image(Gtk.Image(stock='gtk-dialog-warning'))
-        self.timeout_id = GObject.timeout_add(50, self.on_timeout, True)
-        thread = threading.Thread(target=self.outside_task)
-        thread.start()
+        if self.d.epspath:
+            self.repbutton.set_image(Gtk.Image(stock='gtk-dialog-warning'))
+            self.timeout_id = GObject.timeout_add(50, self.on_timeout, True)
+            thread = threading.Thread(target=self.outside_task)
+            thread.start()
+        else:
+            self.logger.warning("There is no EPS file loaded.")
+            dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.CANCEL,
+                                       "Load an EPS file first.")
+            dialog.run()
+            dialog.destroy()
 
     def on_timeout(self, user_data):
         self.pbar.pulse()
@@ -408,3 +520,15 @@ class MainGui:
         self.repbutton.set_image(Gtk.Image(stock='gtk-apply'))
         GObject.source_remove(self.timeout_id)
         self.pbar.set_fraction(0.0)
+
+    @staticmethod
+    def add_filters(dialog):
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name("Eps Files")
+        filter_text.add_mime_type("application/postscript")
+        dialog.add_filter(filter_text)
+
+        filter_any = Gtk.FileFilter()
+        filter_any.set_name("Any files")
+        filter_any.add_pattern("*")
+        dialog.add_filter(filter_any)
