@@ -1,7 +1,7 @@
-PyFrag - PSFrag, python utility
-===============================
+PyPSFrag - PSFrag, python utility
+=================================
 
-PyPfrag is a graphical tool to replace labels (tags) in EPS files into LaTeX format using PSFrag package.
+PyPSfrag is a graphical tool to replace labels (tags) in EPS files into LaTeX format using PSFrag package.
 Easy to use, modify and extend.
 
 It is build into `Python <http://www.python.org/>`_, and the GUI is based on `GTK+ 3 <https://developer.gnome.org/gtk3/stable/>`_.
@@ -31,7 +31,7 @@ In general, in a Debian based system is enough to run: ::
 
 You can make an alias at ~/.bashrc:
 
-alias pyfrag='/path/to/pyfrag.py'
+alias pypsfrag='/path/to/pypsfrag.py'
 
 to be able to execute the program in a terminal.
 
@@ -41,11 +41,11 @@ HOW TO USE PyFrag
 PyFrag is a python script that runs in a terminal, and offers a GUI in runtime.
 You need to provide the target .EPS file to the program: ::
 
-$ /path/to/pyfrag.py epsfile.eps [-O options]
+$ /path/to/pypsfrag.py epsfile.eps [-O options]
 
-where /path/to/ is the directory where pyfrag.py is located. ::
+where /path/to/ is the directory where pypsfrag.py is located. ::
 
-$ pyfrag epsfile.eps [-O options]
+$ pypsfrag epsfile.eps [-O options]
 
 if you have an alias established.
 
@@ -55,5 +55,5 @@ If the file is not found it will not load any substitution.
 
 You can provide optional substitution files with the option [-s subs-file.tex]. ::
 
-$ pyfrag epsfile.eps -s subs-file.tex
+$ pypsfrag epsfile.eps -s subs-file.tex
 
