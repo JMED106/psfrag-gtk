@@ -1,5 +1,5 @@
 """
-    PyFrag - Graphical Tool to replace selected labels in an EPS file into LaTeX format.
+    PyPSfrag - Graphical Tool to replace selected labels in an EPS file into LaTeX format.
     Copyright (C) 2017  Jose M. Esnaola-Acebes
 
     This program is free software: you can redistribute it and/or modify

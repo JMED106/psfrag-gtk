@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-    PyFrag - Graphical Tool to replace selected labels in an EPS file into LaTeX format.
+    PyPSfrag - Graphical Tool to replace selected labels in an EPS file into LaTeX format.
     Copyright (C) 2017  Jose M. Esnaola-Acebes
 
     This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ __author__ = 'Jose M. Esnaola Acebes'
 """ Graphical script to replace texts on EPS files using LaTeX engine and psfrag.
 """
 
-print "\n\tPyFrag  Copyright (C) 2017  Jose M. Esnaola-Acebes\n"\
+print "\n\tPyPSfrag  Copyright (C) 2017  Jose M. Esnaola-Acebes\n"\
       "\tThis program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE.txt.\n"\
       "\tThis is free software, and you are welcome to redistribute it\n"\
       "\tunder certain conditions; see LICENCE.txt for details.\n"
