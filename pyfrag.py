@@ -33,6 +33,11 @@ __author__ = 'Jose M. Esnaola Acebes'
 """ Graphical script to replace texts on EPS files using LaTeX engine and psfrag.
 """
 
+print "\n\tPyFrag  Copyright (C) 2017  Jose M. Esnaola-Acebes\n"\
+      "\tThis program comes with ABSOLUTELY NO WARRANTY; for details see LICENSE.txt.\n"\
+      "\tThis is free software, and you are welcome to redistribute it\n"\
+      "\tunder certain conditions; see LICENCE.txt for details.\n"
+
 # We first try to parse optional configuration files:
 fparser = argparse.ArgumentParser(add_help=False)
 fparser.add_argument('-db', '--debug', default="INFO", dest='db', metavar='<debug>',
