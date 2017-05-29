@@ -1,7 +1,7 @@
-PyPSFrag - PSFrag, python utility
+PyPSfrag - PSfrag, python utility
 =================================
 
-PyPSfrag is a graphical tool to replace labels (tags) in EPS files into LaTeX format using PSFrag package.
+PyPSfrag is a graphical tool to replace labels (tags) in EPS files into LaTeX format using PSfrag package.
 Easy to use, modify and extend.
 
 It is build into `Python <http://www.python.org/>`_, and the GUI is based on `GTK+ 3 <https://developer.gnome.org/gtk3/stable/>`_.
@@ -36,7 +36,7 @@ alias pypsfrag='/path/to/pypsfrag.py'
 
 to be able to execute the program in a terminal.
 
-HOW TO USE PyPSFrag
+HOW TO USE PyPSfrag
 -------------------
 
 PyFrag is a python script that runs in a terminal, and offers a GUI in runtime.
