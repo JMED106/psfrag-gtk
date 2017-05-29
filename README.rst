@@ -35,8 +35,8 @@ alias pypsfrag='/path/to/pypsfrag.py'
 
 to be able to execute the program in a terminal.
 
-HOW TO USE PyFrag
------------------
+HOW TO USE PyPSFrag
+-------------------
 
 PyFrag is a python script that runs in a terminal, and offers a GUI in runtime.
 You need to provide the target .EPS file to the program: ::
