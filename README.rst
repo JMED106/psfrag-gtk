@@ -4,6 +4,12 @@ PyFrag - PSFrag, python utility
 PyPfrag is a graphical tool to replace labels (tags) in EPS files into LaTeX format using PSFrag package.
 Easy to use, modify and extend.
 
+It is build into `Python <http://www.python.org/>`_. and the GUI is based on `GTK+ 3 <https://developer.gnome.org/gtk3/stable/>`_.
+
+It reads the input .eps file, looks for selected tags, and replace them with LaTeX formatted content using psfrag package.
+Output formats can be EPS, PDF, SVG and PNG.
+
+
 INSTALLATION
 ------------
 
@@ -22,7 +28,8 @@ It does not require installation but some python dependencies need to be fulfill
 In general, in a Debian based system is enough to run: ::
 # apt-get install python-yaml python-colorlog
 
-You can make an alias at ~/.bashrc ::
+You can make an alias at ~/.bashrc:
+
 alias pyfrag='/path/to/pyfrag.py'
 
 to be able to execute the program in a terminal.
