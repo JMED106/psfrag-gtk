@@ -1,19 +1,20 @@
 #!/usr/bin/python
-""" v 0.0.1
-    Copyright 2016 Jose M. Esnaola
+"""
+    PyFrag - Graphical Tool to replace selected labels in an EPS file into LaTeX format.
+    Copyright (C) 2017  Jose M. Esnaola-Acebes
 
-        This program is free software: you can redistribute it and/or modify
-        it under the terms of the GNU General Public License as published by
-        the Free Software Foundation, either version 3 of the License, or
-        (at your option) any later version.
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-        This program is distributed in the hope that it will be useful,
-        but WITHOUT ANY WARRANTY; without even the implied warranty of
-        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-        GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-        You should have received a copy of the GNU General Public License
-        along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import argparse
@@ -76,18 +77,23 @@ logger.debug('We are working in %s' % str(cwd))
 logger.debug('Formatting parser')
 parser = argparse.ArgumentParser(
     description='Script to convert selected tags in eps files into latex.',
-    usage='python %s <eps-file> [-O <options>]' % sys.argv[0])
+    usage='python %s input.eps [-O <options>]' % sys.argv[0])
 
 parser.add_argument('epsfile', type=str, help='.eps file in which perform the substitutions.')
 # The default substitution file will be in the same directory as the script.
 parser.add_argument('-s', '--subs', default='%s/subs.tex' % scriptdir, dest='subs', type=str,
                     help='.tex file where the substitutions are located.')
 parser.add_argument('-db', '--debug', default="DEBUG", dest='db', metavar='<debug>',
-                    choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
-parser.add_argument('-g', '--nogui', default=False, dest='nogui', action='store_true')
-parser.add_argument('-pdf', '--pdf', default=False, dest='pdf', action='store_true')
-parser.add_argument('-svg', '--svg', default=False, dest='svg', action='store_true')
-parser.add_argument('-png', '--png', default=False, dest='png', action='store_true')
+                    choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                    help='Debbuging level. Default is INFO.')
+parser.add_argument('-g', '--nogui', default=False, dest='nogui', action='store_true',
+                    help='Run the programm without graphical interface (X11).')
+parser.add_argument('-pdf', '--pdf', default=False, dest='pdf', action='store_true',
+                    help='Add output format: pdf.')
+parser.add_argument('-svg', '--svg', default=False, dest='svg', action='store_true',
+                    help='Add output format: svg.')
+parser.add_argument('-png', '--png', default=False, dest='png', action='store_true',
+                    help='Add output format: png.')
 parser.add_argument('--density', default=300, dest='dsty', type=int, help='Density of the png image.')
 
 args = parser.parse_args()

@@ -27,7 +27,7 @@ HOW TO USE PyFrag
 -----------------
 
 PyFrag is a python script that runs in a terminal, and offers a GUI in runtime.
-You need to provide the target .EPS file to the programm:
+You need to provide the target .EPS file to the program:
 
 $ /path/to/pyfrag.py epsfile.eps [-O options]
 
@@ -43,5 +43,5 @@ If the file is not found it will not load any substitution.
 
 You can provide optional substitution files with the option [-s subs-file.tex].
 
-$ pyfrag epsfile.eps -s subs-file.tex.
+$ pyfrag epsfile.eps -s subs-file.tex
 
