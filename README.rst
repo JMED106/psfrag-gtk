@@ -7,6 +7,10 @@ Easy to use, modify and extend.
 INSTALLATION
 ------------
 
+Download the project and uncompress it into any directory:
+
+https://github.com/JMED106/psfrag-gtk/archive/master.zip
+
 It does not require installation but some python dependencies need to be fulfilled:
 
 - gi, Gtk >= 3.10
