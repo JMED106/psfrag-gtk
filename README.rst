@@ -50,6 +50,12 @@ $ pypsfrag epsfile.eps [-O options]
 
 if you have an alias established.
 
+You can also run the program (in graphical inteface, X11), typing: ::
+
+$ pypsfrag
+
+from there you will be able to open the input .eps file.
+
 
 The program will load a default substitution file (with the script), where psfrag commands are stored.
 If the file is not found it will not load any substitution.
