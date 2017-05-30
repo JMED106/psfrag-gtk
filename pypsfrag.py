@@ -48,7 +48,7 @@ debug = getattr(logging, vars(farg[0])['db'].upper(), None)
 if not isinstance(debug, int):
     raise ValueError('Invalid log level: %s' % vars(farg[0])['db'])
 
-logformat = "%(log_color)s[%(levelname)-7.8s]%(reset)s %(name)-12.12s:%(funcName)-8.8s: " \
+logformat = "%(log_color)s[%(levelname)-7.8s]%(reset)s %(name)-8.8s:%(funcName)-15.15s: " \
             "%(log_color)s%(message)s%(reset)s"
 formatter = ColoredFormatter(logformat, log_colors={
     'DEBUG': 'cyan',

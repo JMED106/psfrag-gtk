@@ -36,7 +36,7 @@ class Data:
         self.logger = logging.getLogger('gui.Data')
 
         self.subspath = subspath
-        # Files
+        # Files (files are stored with absolute paths, if possible)
         self.subsfile = os.path.basename(subspath)
         self.logger.debug('Subs file: %s' % self.subsfile)
 
@@ -69,6 +69,7 @@ class Data:
             self.epsname = None
             self.epsdir = None
         else:
+            # Opening Eps file
             self.open_epsfile(filepath)
 
         # Checking files
@@ -89,7 +90,9 @@ class Data:
             self.reps = []
 
     def open_epsfile(self, filepath):
-        if filepath[0] == '~':
+        """ Function that sets the variables for opening the input file """
+
+        if filepath[0] == '~':                           # We expand (~/)
             self.logger.debug(filepath)
             self.epspath = os.path.expanduser(filepath)
             self.logger.debug(self.epspath)
@@ -102,16 +105,30 @@ class Data:
         self.logger.debug('Eps file name: %s' % self.epsname)
         self.epsdir = os.path.dirname(self.epspath)
         self.epscwd = self.epsdir
-        if self.epsdir == "":
+        if self.epsdir == "":                            # If the file has local path format we add ./
             self.epsdir = "./"
         self.logger.debug('Eps directory: %s' % self.epsdir)
-        self.check_file(self.epspath)
-        self.ferror = self.check_extension(self.epsfile, 'eps')
+        # We check the existance of the file at that path and the extension
+        if self.check_file(self.epspath):
+            if not self.check_extension(self.epsfile, 'eps'):
+                self.epspath = None
+                return False
+        else:
+            self.epspath = None
+            return False
+
         # Prepare the eps file to read (tags)
         f = open(self.epspath, 'r')
         self.epsimage = f.read()
+        return True
 
     def check_file(self, fin, critical=True):
+        """
+        Check if the file exists
+        :param fin: input file's path.
+        :param critical: forces the program to stop if the file is not found. Default is True.
+        :return: True if the file exists. False if it does not.
+        """
         self.logger.debug("Checking %s file ..." % fin)
         if not os.path.exists(fin):
             if critical:
@@ -123,14 +140,31 @@ class Data:
             return True
 
     def check_extension(self, fin, extension):
+        """
+        Check the extension of file fin.
+        :param fin: input file's path.
+        :param extension: extension to be checked.
+        :return: True if the extension coincides.
+        """
         self.logger.debug("Checking %s extension ..." % fin)
         if not fin.endswith(extension):
             self.logger.error("File %s is not a %s file." % (fin, extension))
-            return 1
+            return False
         else:
-            return 0
+            return True
 
     def read_subs(self):
+        """
+        Reads the already opened substitutions file. Looks for tags and replacements.
+        :return: 'tags' and 'reps' contains tags and replacements found in the psfrag commands.
+        """
+        # The substitution file should have an specific format:
+        # % BEGIN INFO
+        # % END INFO
+        # % BEGIN PS
+        # \psfrag{'tag'}{'rep'} %EndPs
+        # % END PS
+
         self.subspre = re.findall(r'% BEGIN INFO.*?% END INFO\n', self.subs, re.DOTALL)
         self.subsps = re.findall(r'% BEGIN PS(.*?)% END PS\n', self.subs, re.DOTALL)
         tags = []
@@ -360,8 +394,8 @@ class MainGui:
         if response == Gtk.ResponseType.OK:
             self.logger.debug("Open clicked")
             self.logger.debug("File selected: " + dialog.get_filename())
-            self.d.open_epsfile(dialog.get_filename())
-            self.openentry.set_text(self.d.epspath)
+            if self.d.open_epsfile(dialog.get_filename()):
+                self.openentry.set_text(self.d.epspath)
         elif response == Gtk.ResponseType.CANCEL:
             self.logger.debug("Cancel clicked")
 
