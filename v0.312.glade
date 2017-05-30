@@ -357,7 +357,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkEntry" id="entry1">
+                              <object class="GtkEntry" id="entry3">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <signal name="activate" handler="on_latex_activate" swapped="no"/>
