@@ -64,3 +64,15 @@ You can provide optional substitution files with the option [-s subs-file.tex]. 
 
 $ pypsfrag [-f epsfile.eps] -s subs-file.tex [-O options]
 
+Example
+******* 
+To open example.eps file (provided with the package, located in ./example/): ::
+$ pypsfrag -f example/example.eps
+
+To avoid loading any default substitutions, use -s None (in graphical interface): ::
+$ pypsfrag -f example/example.eps -s None
+
+
+
+
+
