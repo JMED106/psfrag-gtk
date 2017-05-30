@@ -60,7 +60,8 @@ class Data:
 
         # List where the tags and substitutions are stored
         self.labels = [{"label": "", "latex": ""}]
-        self.epsimage = 1
+        self.epsimage = ""
+        self.epstags = None
 
         # Paths
         if filepath is None:
@@ -92,7 +93,7 @@ class Data:
     def open_epsfile(self, filepath):
         """ Function that sets the variables for opening the input file """
 
-        if filepath[0] == '~':                           # We expand (~/)
+        if filepath[0] == '~':  # We expand (~/)
             self.logger.debug(filepath)
             self.epspath = os.path.expanduser(filepath)
             self.logger.debug(self.epspath)
@@ -105,7 +106,7 @@ class Data:
         self.logger.debug('Eps file name: %s' % self.epsname)
         self.epsdir = os.path.dirname(self.epspath)
         self.epscwd = self.epsdir
-        if self.epsdir == "":                            # If the file has local path format we add ./
+        if self.epsdir == "":  # If the file has local path format we add ./
             self.epsdir = "./"
         self.logger.debug('Eps directory: %s' % self.epsdir)
         # We check the existance of the file at that path and the extension
@@ -120,6 +121,7 @@ class Data:
         # Prepare the eps file to read (tags)
         f = open(self.epspath, 'r')
         self.epsimage = f.read()
+        self.epstags = self.read_tags(self.epsimage)
         return True
 
     def check_file(self, fin, critical=True):
@@ -192,6 +194,17 @@ class Data:
         self.logger.debug(tags)
         self.logger.debug(reps)
         return tags, reps
+
+    def read_tags(self, epscontent):
+        """ Function that reads every tag in the eps-file"""
+        creator = re.findall('%%Creator: (.*?)\n', epscontent, re.DOTALL)
+        self.logger.debug("Creator of the .eps file: %s" % creator[0])
+        if creator[0].startswith('Grace'):
+            tags = re.findall('\((.*?)\)', epscontent, re.DOTALL)
+            self.logger.debug(tags)
+            return tags
+        else:
+            return None
 
 
 class PSFrag:
@@ -357,7 +370,8 @@ class MainGui:
                    "on_replace_clicked": self.on_replace_clicked,
                    "on_open_clicked": self.on_open_clicked,
                    "on_fileentry_activate": self.on_fileentry_activate,
-                   "on_fileentry_drag_data_received": self.on_drag_data}
+                   "on_fileentry_drag_data_received": self.on_drag_data,
+                   "on_comboboxtext1_changed": self.on_combo_changed}
 
         dnd_list = [Gtk.TargetEntry.new("text/uri-list", 0, TARGET_TYPE_URI_LIST)]
 
@@ -380,6 +394,12 @@ class MainGui:
                 if len(self.d.labels) < len(self.d.tags):
                     label, latex = self.on_add_clicked(None)
 
+        # We create the listbox for the tags combobox
+        if self.d.epstags:
+            self.tag_store = self.update_tag_list(self.d.epstags)
+        else:
+            self.tag_store = Gtk.ListStore(int, str)
+
     def on_exit_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
         Gtk.main_quit()
@@ -396,6 +416,7 @@ class MainGui:
             self.logger.debug("File selected: " + dialog.get_filename())
             if self.d.open_epsfile(dialog.get_filename()):
                 self.openentry.set_text(self.d.epspath)
+                self.update_tag_list(self.d.epstags, self.tag_store)
         elif response == Gtk.ResponseType.CANCEL:
             self.logger.debug("Cancel clicked")
 
@@ -405,6 +426,8 @@ class MainGui:
         self.logger.debug('Text on %s modified' % event)
         filename = event.get_text()
         self.d.open_epsfile(filename)
+        if self.d.epstags:
+            self.update_tag_list(self.d.epstags, self.tag_store)
 
     def on_drag_data(self, event, context, x, y, selection, target_type, timestamp):
         self.logger.debug('Something dropped on %s' % event)
@@ -418,6 +441,8 @@ class MainGui:
                 if os.path.isfile(path):  # is it file?
                     self.logger.debug("Dropped file name: %s" % path)
                     self.d.open_epsfile(path)
+                    if self.d.epstags:
+                        self.update_tag_list(self.d.epstags, self.tag_store)
 
     @staticmethod
     def get_file_path_from_dnd_dropped_uri(uri):
@@ -461,7 +486,8 @@ class MainGui:
 
     def on_label_activate(self, event):
         self.logger.debug('Text on %s modified' % event)
-        box = event.get_parent()
+        combobox = event.get_parent()
+        box = combobox.get_parent()
         listboxrow = box.get_parent()
 
         rowindex = listboxrow.get_index()
@@ -481,18 +507,34 @@ class MainGui:
         self.d.labels[rowindex][tag] = event.get_text()
         self.logger.debug('Text at %s: %s' % (tag, self.d.labels[rowindex][tag]))
 
+    def on_combo_changed(self, widget):
+        self.logger.debug('ComboBox %s changed' % widget)
+        tree_iter = widget.get_active_iter()
+        if tree_iter is not None:
+            model = widget.get_model()
+            row_id, name = model(tree_iter)[:2]
+            self.logger.debug("Selected: ID=%d, name=%s" % (row_id, name))
+        else:
+            entry = widget.get_child()
+            self.logger.debug("Entered: %s" % entry.get_text())
+
     def on_add_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
         newbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        self.listbox.insert(newbox, -1)
-        label_entry = Gtk.Entry()
+        row = self.listbox.insert(newbox, -1)
+        label_combobox = Gtk.ComboBoxText.new_with_entry()
+        label_entry = label_combobox.get_children()[0]
         label_entry.connect("activate", self.on_label_activate)
+
         latex_entry = Gtk.Entry()
         latex_entry.connect("activate", self.on_latex_activate)
-        button = Gtk.Button(label="Check", image=Gtk.Image(stock="gtk-refresh"))
+
+        button = Gtk.Button(label="Check", image=Gtk.Image(stock="gtk-find"))
         button.connect("clicked", self.on_check_clicked)
 
-        newbox.pack_start(label_entry, True, True, padding=4)
+        newbox.pack_start(label_combobox, True, True, padding=4)
+        if self.d.epstags:
+            self.update_combobox(self.tag_store, row=row)
         newbox.pack_start(latex_entry, True, True, padding=4)
         newbox.pack_start(button, True, True, padding=4)
         self.d.labels.append({"label": "", "latex": ""})
@@ -504,7 +546,8 @@ class MainGui:
         self.logger.debug('Button %s pressed' % event)
         box = event.get_parent()
         children = box.get_children()
-        entry1 = children[0]
+        combobox1 = children[0]
+        entry1 = combobox1.get_children()[0]
         entry2 = children[1]
         self.on_label_activate(entry1)
         self.on_latex_activate(entry2)
@@ -519,7 +562,7 @@ class MainGui:
                 event.set_image(Gtk.Image(stock="gtk-apply"))
             else:
                 self.logger.warning("Tag %s not found." % self.d.labels[rowindex]['label'])
-                event.set_image(Gtk.Image(stock="gtk-dialog-error"))
+                event.set_image(Gtk.Image(stock="gtk-dialog-warning"))
         else:
             exists = False
             self.logger.warning("There is no EPS file loaded.")
@@ -554,6 +597,29 @@ class MainGui:
         self.repbutton.set_image(Gtk.Image(stock='gtk-apply'))
         GObject.source_remove(self.timeout_id)
         self.pbar.set_fraction(0.0)
+
+    def update_tag_list(self, tags, listtags=None):
+        if listtags is not None:
+            del listtags
+
+        tag_store = Gtk.ListStore(int, str)
+        # tag_store.append([0, ""])
+        if tags:
+            for k, tag in enumerate(tags):
+                tag_store.append([k, tag])
+        self.update_combobox(tag_store)
+        return tag_store
+
+    def update_combobox(self, taglist, row=None):
+        if row is None:
+            listbox = self.listbox.get_children()
+        else:
+            listbox = [row]
+        for listboxrow in listbox:
+            box = listboxrow.get_children()[0]
+            combobox = box.get_children()[0]
+            combobox.set_model(taglist)
+            combobox.set_entry_text_column(1)
 
     @staticmethod
     def add_filters(dialog):
