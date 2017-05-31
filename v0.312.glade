@@ -29,6 +29,11 @@
     <property name="can_focus">False</property>
     <property name="stock">gtk-add</property>
   </object>
+  <object class="GtkAdjustment" id="rotation">
+    <property name="upper">360</property>
+    <property name="step_increment">10</property>
+    <property name="page_increment">100</property>
+  </object>
   <object class="GtkWindow" id="window1">
     <property name="can_focus">False</property>
     <property name="margin_left">10</property>
@@ -96,14 +101,13 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="fileentry">
+                      <object class="GtkEntry" id="file">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="margin_right">7</property>
                         <property name="placeholder_text" translatable="yes">Input file</property>
-                        <signal name="activate" handler="on_fileentry_activate" swapped="no"/>
-                        <signal name="drag-data-received" handler="on_fileentry_drag_data_received" swapped="no"/>
-                        <accelerator key="Return" signal="activate"/>
+                        <signal name="activate" handler="on_file_activate" swapped="no"/>
+                        <signal name="drag-data-received" handler="on_file_drag_data_received" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -280,37 +284,104 @@
                     <property name="can_focus">False</property>
                     <child>
                       <object class="GtkLabel" id="label2">
+                        <property name="width_request">206</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="halign">start</property>
+                        <property name="xalign">0</property>
                         <property name="label" translatable="yes">EPS labels</property>
                         <attributes>
                           <attribute name="font-desc" value="&lt;Introducir valor&gt; 12"/>
                         </attributes>
                       </object>
                       <packing>
-                        <property name="expand">True</property>
+                        <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="padding">4</property>
+                        <property name="padding">3</property>
                         <property name="position">0</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkLabel" id="label3">
+                      <object class="GtkLabel" id="label6">
+                        <property name="width_request">65</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="halign">center</property>
-                        <property name="margin_left">43</property>
+                        <property name="halign">start</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">Posn</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label7">
+                        <property name="width_request">64</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">PsPosn</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label8">
+                        <property name="width_request">44</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">Scale</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">3</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label9">
+                        <property name="width_request">107</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="xalign">0.1499999612569809</property>
+                        <property name="label" translatable="yes">Rotation</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">3</property>
+                        <property name="position">4</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label3">
+                        <property name="width_request">160</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="xalign">0</property>
                         <property name="label" translatable="yes">Replacement Text</property>
                         <attributes>
                           <attribute name="font-desc" value="&lt;Introducir valor&gt; 12"/>
                         </attributes>
                       </object>
                       <packing>
-                        <property name="expand">True</property>
-                        <property name="fill">True</property>
-                        <property name="padding">4</property>
-                        <property name="position">1</property>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">11</property>
+                        <property name="position">5</property>
                       </packing>
                     </child>
                     <child>
@@ -342,10 +413,12 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="has_entry">True</property>
+                                <signal name="changed" handler="on_combotext_changed" swapped="no"/>
                                 <child internal-child="entry">
                                   <object class="GtkEntry" id="entry2">
+                                    <property name="name">tag1</property>
                                     <property name="can_focus">True</property>
-                                    <signal name="activate" handler="on_label_activate" swapped="no"/>
+                                    <signal name="activate" handler="on_entry_activate" swapped="no"/>
                                   </object>
                                 </child>
                               </object>
@@ -357,16 +430,145 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkEntry" id="entry3">
+                              <object class="GtkComboBoxText" id="comboposn">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <signal name="activate" handler="on_latex_activate" swapped="no"/>
+                                <property name="has_entry">True</property>
+                                <property name="popup_fixed_width">False</property>
+                                <items>
+                                  <item id="1" translatable="yes">c</item>
+                                  <item id="2" translatable="yes">b</item>
+                                  <item id="3" translatable="yes">B</item>
+                                  <item id="4" translatable="yes">t</item>
+                                  <item id="5" translatable="yes">l</item>
+                                  <item id="6" translatable="yes">r</item>
+                                  <item id="7" translatable="yes">cc</item>
+                                  <item id="8" translatable="yes">cl</item>
+                                  <item id="9" translatable="yes">cr</item>
+                                  <item id="10" translatable="yes">bc</item>
+                                  <item id="11" translatable="yes">bl</item>
+                                  <item id="12" translatable="yes">br</item>
+                                  <item id="13" translatable="yes">tc</item>
+                                  <item id="14" translatable="yes">tl</item>
+                                  <item id="15" translatable="yes">tr</item>
+                                  <item id="16" translatable="yes">Bc</item>
+                                  <item id="17" translatable="yes">Bl</item>
+                                  <item id="18" translatable="yes">Br</item>
+                                </items>
+                                <signal name="changed" handler="on_combotext_changed" swapped="no"/>
+                                <child internal-child="entry">
+                                  <object class="GtkEntry" id="posn">
+                                    <property name="name">opta1</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="max_length">2</property>
+                                    <property name="width_chars">2</property>
+                                    <property name="max_width_chars">2</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="padding">2</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBoxText" id="combopsposn">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="has_entry">True</property>
+                                <property name="popup_fixed_width">False</property>
+                                <items>
+                                  <item id="1" translatable="yes">c</item>
+                                  <item id="2" translatable="yes">b</item>
+                                  <item id="3" translatable="yes">B</item>
+                                  <item id="4" translatable="yes">t</item>
+                                  <item id="5" translatable="yes">l</item>
+                                  <item id="6" translatable="yes">r</item>
+                                  <item id="7" translatable="yes">cc</item>
+                                  <item id="8" translatable="yes">cl</item>
+                                  <item id="9" translatable="yes">cr</item>
+                                  <item id="10" translatable="yes">bc</item>
+                                  <item id="11" translatable="yes">bl</item>
+                                  <item id="12" translatable="yes">br</item>
+                                  <item id="13" translatable="yes">tc</item>
+                                  <item id="14" translatable="yes">tl</item>
+                                  <item id="15" translatable="yes">tr</item>
+                                  <item id="16" translatable="yes">Bc</item>
+                                  <item id="17" translatable="yes">Bl</item>
+                                  <item id="18" translatable="yes">Br</item>
+                                </items>
+                                <signal name="changed" handler="on_combotext_changed" swapped="no"/>
+                                <child internal-child="entry">
+                                  <object class="GtkEntry" id="psposn">
+                                    <property name="name">optb1</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="max_length">2</property>
+                                    <property name="width_chars">2</property>
+                                    <property name="max_width_chars">2</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">False</property>
+                                <property name="padding">2</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="scale">
+                                <property name="name">optc1</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="max_length">3</property>
+                                <property name="width_chars">3</property>
+                                <property name="max_width_chars">3</property>
+                                <property name="xalign">0.5</property>
+                                <property name="input_purpose">number</property>
+                                <signal name="activate" handler="on_entry_activate" swapped="no"/>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
                                 <property name="padding">4</property>
-                                <property name="position">1</property>
+                                <property name="position">3</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkSpinButton" id="rot">
+                                <property name="name">optd1</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="max_length">3</property>
+                                <property name="width_chars">3</property>
+                                <property name="max_width_chars">3</property>
+                                <property name="xalign">1</property>
+                                <property name="adjustment">rotation</property>
+                                <property name="numeric">True</property>
+                                <signal name="activate" handler="on_entry_activate" swapped="no"/>
+                                <signal name="value-changed" handler="on_entry_activate" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="padding">4</property>
+                                <property name="position">4</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="entry3">
+                                <property name="name">ltx1</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <signal name="activate" handler="on_entry_activate" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="padding">4</property>
+                                <property name="position">5</property>
                               </packing>
                             </child>
                             <child>
@@ -384,7 +586,7 @@
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
                                 <property name="padding">4</property>
-                                <property name="position">2</property>
+                                <property name="position">6</property>
                               </packing>
                             </child>
                           </object>

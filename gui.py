@@ -31,25 +31,32 @@ TARGET_TYPE_URI_LIST = 0
 
 
 class Data:
-    def __init__(self, filepath="example.eps", subspath="subs.tex", cwd="./",
+    def __init__(self, filepath="example.eps", subspath=None, cwd="./",
                  pdf=False, svg=False, png=False, density=300):
         self.logger = logging.getLogger('gui.Data')
 
-        self.subspath = subspath
-        # Files (files are stored with absolute paths, if possible)
-        self.subsfile = os.path.basename(subspath)
-        self.logger.debug('Subs file: %s' % self.subsfile)
-
-        # Files names (without extension)
-        self.subsname = self.subsfile[0:-4]
-        self.logger.debug('Subs file name: %s' % self.subsname)
-        self.ferror = 1
-
-        # Dirs
-        self.subsdir = os.path.dirname(subspath)
-        self.logger.debug('Subs directory: %s' % self.subsdir)
         self.cwd = cwd
         self.epscwd = cwd
+
+        if subspath:
+            self.subspath = subspath
+            # Files (files are stored with absolute paths, if possible)
+            self.subsfile = os.path.basename(subspath)
+            self.logger.debug('Subs file: %s' % self.subsfile)
+
+            # Files names (without extension)
+            self.subsname = self.subsfile[0:-4]
+            self.logger.debug('Subs file name: %s' % self.subsname)
+            self.ferror = 1
+
+            # Dirs
+            self.subsdir = os.path.dirname(subspath)
+            self.logger.debug('Subs directory: %s' % self.subsdir)
+            # Checking files
+            subs = self.check_file(self.subspath, False)
+            self.check_extension(self.subsfile, 'tex')
+        else:
+            subs = False
 
         # Output format options
         self.eps = True
@@ -59,7 +66,10 @@ class Data:
         self.density = density  # Default density for png conversion
 
         # List where the tags and substitutions are stored
-        self.labels = [{"label": "", "latex": ""}]
+        # Options are [ posn ][ psposn ][ scale ][ rot ]
+        self.default_ops = {"a": 'bl', "b": 'bl', "c": '1.0', "d": '0'}
+        self.labels = [{"tag": "", "ltx": "", "opt": dict(self.default_ops)}]
+
         self.epsimage = ""
         self.epstags = None
 
@@ -73,10 +83,6 @@ class Data:
             # Opening Eps file
             self.open_epsfile(filepath)
 
-        # Checking files
-        subs = self.check_file(self.subspath, False)
-        self.check_extension(self.subsfile, 'tex')
-
         # Prepare the subs file to read (tags and replacements)
         self.subspre = None
         self.subsps = None
@@ -84,11 +90,12 @@ class Data:
             f2 = open(self.subspath, 'r')
             self.subs = f2.read()
             self.logger.debug("Loading labels from %s ..." % self.subsfile)
-            self.tags, self.reps = self.read_subs()
+            self.tags, self.reps, self.opts = self.read_subs()
         else:
             self.subspre = "% BEGIN INFO\n% END INFO\n"
             self.tags = []
             self.reps = []
+            self.opts = []
 
     def open_epsfile(self, filepath):
         """ Function that sets the variables for opening the input file """
@@ -164,36 +171,43 @@ class Data:
         # % BEGIN INFO
         # % END INFO
         # % BEGIN PS
-        # \psfrag{'tag'}{'rep'} %EndPs
+        # \psfrag{'tag'}['posn']['psposn']['scale']['rot']{'rep'}
         # % END PS
 
         self.subspre = re.findall(r'% BEGIN INFO.*?% END INFO\n', self.subs, re.DOTALL)
         self.subsps = re.findall(r'% BEGIN PS(.*?)% END PS\n', self.subs, re.DOTALL)
         tags = []
         reps = []
+        opts = []
+        ttag, rrep = "", ""
         if self.subsps:
-            psfrags = re.findall(r'\n.*?%EndPs', self.subsps[0], re.DOTALL)
+            psfrags = re.findall(r'\\psfrag(.*?)\n', self.subsps[0])
         else:
             self.logger.warning('I did not find any psfrag commands ...')
             return tags, reps
 
-        plenght = len("\\psfrag{")
         for k, psfrag in enumerate(psfrags):
             if psfrag:
-                tag = re.findall(r'\\psfrag{(.*?)}', psfrag)
-                length = plenght + len(tag[0])
-                tags.append(tag[0])
-                rep = re.findall(r']{(.*?)} %EndPs', psfrag[length:])
-                if not rep:
-                    rep = re.findall(r']{(.*?)}%EndPs', psfrag[length:])[0]
-                else:
-                    rep = rep[0]
-                reps.append(rep)
+                tag = re.findall(r'\{(.*?)\}\{|\{(.*?)\}\[', psfrag)
+                for t in list(tag[0]):
+                    if t != "":
+                        ttag = t
+                rep = re.findall(r'\]\{(.*?)\}$|\}\{(.*?)\}$', psfrag)
+                for t in list(rep[0]):
+                    if t != "":
+                        rrep = t
+                options = psfrag[len(ttag) + 1:-len(rrep) - 1]
+                opt = re.findall(r'\[(.*?)\]', options)
+                tags.append(ttag)
+                reps.append(rrep)
+                opts.append(opt)
             else:
                 del psfrags[k]
+
         self.logger.debug(tags)
         self.logger.debug(reps)
-        return tags, reps
+        self.logger.debug(opts)
+        return tags, reps, opts
 
     def read_tags(self, epscontent):
         """ Function that reads every tag in the eps-file"""
@@ -229,7 +243,7 @@ class PSFrag:
         self.subsname = None
 
     def check_tag(self, index):
-        tag = self.d.labels[index]['label']
+        tag = self.d.labels[index]['tag']
         self.logger.debug("Searching for %s ..." % tag)
         # Find the tag in the eps file
         tags = re.findall('\(' + tag + '\) show', self.d.epsimage, re.DOTALL)
@@ -252,8 +266,17 @@ class PSFrag:
             self.logger.warning("Something is not going ok with %s ..." % filename)
             self.logger.warning("There are no tags to replace ...")
         f.write("% BEGIN PS\n")
-        for row in self.d.labels:
-            f.write("\\psfrag{" + row['label'] + "}[][]{" + row['latex'] + "} %EndPs\n")
+        for k, row in enumerate(self.d.labels):
+            f.write("\\psfrag{" + row['tag'] + "}")
+            for key in sorted(row['opt']):
+                if key is None:
+                    opt = ""
+                else:
+                    opt = row['opt'][key]
+                    if key in ('c', 'd') and opt == '':
+                        opt = self.d.default_ops[key]
+                f.write("[" + opt + "]")
+            f.write("{" + row['ltx'] + "}\n")
         f.write("% END PS\n")
         f.close()
         self.logger.debug("Writing Done!")
@@ -352,9 +375,18 @@ class MainGui:
         self.im_ok = self.builder.get_object("image3")
         label = self.builder.get_object("entry2")
         latex = self.builder.get_object("entry3")
-        self.openentry = self.builder.get_object("fileentry")
+        posn = self.builder.get_object("posn")
+        psposn = self.builder.get_object("psposn")
+        scale = self.builder.get_object("scale")
+        rot = self.builder.get_object("rot")
+        options = [posn, psposn, scale, rot]
+        self.open = self.builder.get_object("file")
+        poscombo = self.builder.get_object("comboposn")
+        self.pos_store = poscombo.get_model()
+        self.active_pos = poscombo.get_active()
+
         if self.d.epspath is not None:
-            self.openentry.set_text(self.d.epspath)
+            self.open.set_text(self.d.epspath)
 
         signals = {"on_exit_clicked": self.on_exit_clicked,
                    "gtk_main_quit": Gtk.main_quit,
@@ -363,15 +395,14 @@ class MainGui:
                    "on_SVG_toggled": self.on_svg_toggled,
                    "on_png_toggled": self.on_png_toggled,
                    "on_density_value_changed": self.on_density_value_changed,
-                   "on_label_activate": self.on_label_activate,
-                   "on_latex_activate": self.on_latex_activate,
+                   "on_entry_activate": self.on_entry_activate,
+                   "on_combotext_changed": self.on_combo_changed,
                    "on_add_clicked": self.on_add_clicked,
                    "on_check_clicked": self.on_check_clicked,
                    "on_replace_clicked": self.on_replace_clicked,
                    "on_open_clicked": self.on_open_clicked,
-                   "on_fileentry_activate": self.on_fileentry_activate,
-                   "on_fileentry_drag_data_received": self.on_drag_data,
-                   "on_comboboxtext1_changed": self.on_combo_changed}
+                   "on_file_activate": self.on_file_activate,
+                   "on_file_drag_data_received": self.on_drag_data}
 
         dnd_list = [Gtk.TargetEntry.new("text/uri-list", 0, TARGET_TYPE_URI_LIST)]
 
@@ -383,22 +414,25 @@ class MainGui:
         self.repbutton = self.builder.get_object("replace")
         self.timeout_id = None
 
-        # We load the replacements from the subs file, if any:
-        if self.d.tags:
-            self.logger.debug("Setting default tags and replacements...")
-            for tag, rep in zip(self.d.tags, self.d.reps):
-                label.set_text(tag)
-                self.on_label_activate(label)
-                latex.set_text(rep)
-                self.on_latex_activate(latex)
-                if len(self.d.labels) < len(self.d.tags):
-                    label, latex = self.on_add_clicked(None)
-
         # We create the listbox for the tags combobox
         if self.d.epstags:
             self.tag_store = self.update_tag_list(self.d.epstags)
         else:
             self.tag_store = Gtk.ListStore(int, str)
+
+        # We load the replacements from the subs file, if any:
+        if self.d.tags:
+            self.logger.debug("Setting default tags and replacements...")
+            for tag, rep, opts in zip(self.d.tags, self.d.reps, self.d.opts):
+                label.set_text(tag)
+                self.on_entry_activate(label)
+                latex.set_text(rep)
+                self.on_entry_activate(latex)
+                for opt, optentry in zip(opts, options):
+                    optentry.set_text(opt)
+                    self.on_entry_activate(optentry)
+                if len(self.d.labels) < len(self.d.tags):
+                    label, latex, options = self.on_add_clicked(None)
 
     def on_exit_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
@@ -415,14 +449,14 @@ class MainGui:
             self.logger.debug("Open clicked")
             self.logger.debug("File selected: " + dialog.get_filename())
             if self.d.open_epsfile(dialog.get_filename()):
-                self.openentry.set_text(self.d.epspath)
+                self.open.set_text(self.d.epspath)
                 self.update_tag_list(self.d.epstags, self.tag_store)
         elif response == Gtk.ResponseType.CANCEL:
             self.logger.debug("Cancel clicked")
 
         dialog.destroy()
 
-    def on_fileentry_activate(self, event):
+    def on_file_activate(self, event):
         self.logger.debug('Text on %s modified' % event)
         filename = event.get_text()
         self.d.open_epsfile(filename)
@@ -484,84 +518,137 @@ class MainGui:
         self.d.density = self.densityspin.get_value()
         self.logger.debug('Density for PNG conversion: %d' % self.d.density)
 
-    def on_label_activate(self, event):
-        self.logger.debug('Text on %s modified' % event)
-        combobox = event.get_parent()
-        box = combobox.get_parent()
-        listboxrow = box.get_parent()
+    def on_entry_activate(self, entry):
+        self.logger.debug('Text on %s modified' % entry)
+        name = entry.get_name()
+        self.logger.debug('Entry widget name: %s' % name)
+
+        parent = entry.get_parent()
+        self.logger.debug('Parent of %s: %s' % (name, parent.get_name()))
+        if parent.get_name() in ('GtkComboBox', 'GtkComboBoxText'):
+            listboxrow = parent.get_parent().get_parent()
+        elif parent.get_name() == 'GtkBox':
+            listboxrow = parent.get_parent()
+        else:
+            self.logger.error('Widget not registered')
+            return 1
 
         rowindex = listboxrow.get_index()
         self.listbox.select_row(listboxrow)
-        tag = "label"
-        self.d.labels[rowindex][tag] = event.get_text()
-        self.logger.debug('Text at %s: %s' % (tag, self.d.labels[rowindex][tag]))
-
-    def on_latex_activate(self, event):
-        self.logger.debug('Text on %s modified' % event)
-        box = event.get_parent()
-        listboxrow = box.get_parent()
-
-        rowindex = listboxrow.get_index()
-        self.listbox.select_row(listboxrow)
-        tag = "latex"
-        self.d.labels[rowindex][tag] = event.get_text()
-        self.logger.debug('Text at %s: %s' % (tag, self.d.labels[rowindex][tag]))
+        tag = name[0:3]
+        if tag == 'opt':
+            op = name[3]
+            self.d.labels[rowindex][tag][op] = entry.get_text()
+        else:
+            self.d.labels[rowindex][tag] = entry.get_text()
+        self.logger.debug('Text at %s: %s' % (name, self.d.labels[rowindex][tag]))
 
     def on_combo_changed(self, widget):
         self.logger.debug('ComboBox %s changed' % widget)
-        tree_iter = widget.get_active_iter()
-        if tree_iter is not None:
-            model = widget.get_model()
-            row_id, name = model(tree_iter)[:2]
-            self.logger.debug("Selected: ID=%d, name=%s" % (row_id, name))
-        else:
-            entry = widget.get_child()
-            self.logger.debug("Entered: %s" % entry.get_text())
+        entry = widget.get_child()
+        self.logger.debug("Entered: %s" % entry.get_text())
+        self.on_entry_activate(entry)
 
     def on_add_clicked(self, event):
+        """ Add a new row to the list box, identical to the previous ones """
         self.logger.debug('Button %s pressed' % event)
-        newbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        row = self.listbox.insert(newbox, -1)
-        label_combobox = Gtk.ComboBoxText.new_with_entry()
+        newbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)  # The box containing the widgets
+        row = self.listbox.insert(newbox, -1)                     # The new listboxrow
+        row_index = len(self.d.labels) + 1
+
+        # First child
+        label_combobox = Gtk.ComboBoxText.new_with_entry()        # The tag combobox with entry
         label_entry = label_combobox.get_children()[0]
-        label_entry.connect("activate", self.on_label_activate)
+        label_entry.connect("activate", self.on_entry_activate)
+        label_entry.set_name("tag%d" % row_index)
+        newbox.pack_start(label_combobox, True, True, padding=4)
 
+        # Second child
+        posn = Gtk.ComboBox.new_with_model_and_entry(self.pos_store)
+        posn.set_entry_text_column(0)
+        posn.set_active(self.active_pos)
+        posn.connect("changed", self.on_combo_changed)
+        posn_entry = posn.get_children()[0]
+        # Properties of the entry
+        posn_entry.set_width_chars(2)
+        posn_entry.set_max_width_chars(2)
+        posn_entry.set_max_length(2)
+        posn_entry.connect("activate", self.on_entry_activate)
+        posn_entry.set_name("opta%d" % row_index)
+        newbox.pack_start(posn, True, False, padding=2)
+
+        # Third child
+        psposn = Gtk.ComboBox.new_with_model_and_entry(self.pos_store)
+        psposn.set_entry_text_column(0)
+        psposn.set_active(self.active_pos)
+        psposn.connect("changed", self.on_combo_changed)
+        psposn_entry = psposn.get_children()[0]
+        # Properties of the entry
+        psposn_entry.set_width_chars(2)
+        psposn_entry.set_max_width_chars(2)
+        psposn_entry.set_max_length(2)
+        psposn_entry.connect("activate", self.on_entry_activate)
+        psposn_entry.set_name("optb%d" % row_index)
+        # psposn_entry.connect("activate", self.on_psposn_activate)
+        newbox.pack_start(psposn, True, False, padding=2)
+
+        # Fourth child
+        scale = Gtk.Entry(width_chars=3, max_width_chars=3, max_length=3)
+        scale.set_alignment(0.5)
+        scale.connect("activate", self.on_entry_activate)
+        scale.set_name("optc%d" % row_index)
+        newbox.pack_start(scale, True, False, padding=4)
+
+        # Fifht child
+        adjustment = Gtk.Adjustment(0, 0, 360, 10, 60, 0)
+        rot = Gtk.SpinButton(adjustment=adjustment, numeric=True, width_chars=3, max_width_chars=3, max_length=3)
+        rot.set_alignment(1.0)
+        rot.connect("activate", self.on_entry_activate)
+        rot.connect("value-changed", self.on_entry_activate)
+        rot.set_name("optd%d" % row_index)
+        newbox.pack_start(rot, True, False, padding=4)
+
+        # Sixth child
         latex_entry = Gtk.Entry()
-        latex_entry.connect("activate", self.on_latex_activate)
+        latex_entry.connect("activate", self.on_entry_activate)
+        latex_entry.set_name("ltx%d" % row_index)
+        newbox.pack_start(latex_entry, True, False, padding=4)
 
+        # Last child
         button = Gtk.Button(label="Check", image=Gtk.Image(stock="gtk-find"))
         button.connect("clicked", self.on_check_clicked)
+        newbox.pack_start(button, True, False, padding=4)
 
-        newbox.pack_start(label_combobox, True, True, padding=4)
         if self.d.epstags:
             self.update_combobox(self.tag_store, row=row)
-        newbox.pack_start(latex_entry, True, True, padding=4)
-        newbox.pack_start(button, True, True, padding=4)
-        self.d.labels.append({"label": "", "latex": ""})
+
+        self.d.labels.append({"tag": "", "ltx": "", "opt": dict(self.d.default_ops)})
 
         self.window.show_all()
-        return label_entry, latex_entry
+        options = [posn_entry, psposn_entry, scale, rot]
+        return label_entry, latex_entry, options
 
     def on_check_clicked(self, event):
+        """ Check whether the introduced tag exists """
         self.logger.debug('Button %s pressed' % event)
-        box = event.get_parent()
-        children = box.get_children()
-        combobox1 = children[0]
-        entry1 = combobox1.get_children()[0]
-        entry2 = children[1]
-        self.on_label_activate(entry1)
-        self.on_latex_activate(entry2)
-        listboxrow = box.get_parent()
-        rowindex = listboxrow.get_index()
-        self.listbox.select_row(listboxrow)
-        # Run a function of rowindex
+        box = event.get_parent()  # We obtain the box (parent of the button)
+        children = box.get_children()  # We obtain the children in the listbox
+        combobox1 = children[0]  # The tag combobox is the first child
+        entry1 = combobox1.get_children()[0]  # We select the entry in the tag combobox
+        entry2 = children[-2]  # The latex entry is the second last child
+        self.on_entry_activate(entry1)  # We make sure the data in the entries is stored in memory
+        self.on_entry_activate(entry2)
+        listboxrow = box.get_parent()  # Get the row in the listbox
+        rowindex = listboxrow.get_index()  # Get the row index
+        self.listbox.select_row(listboxrow)  # Select the row, and highlight
+        # Run a function of rowindex           # Look for the tag in the input file
         if self.d.epspath:
             exists = self.pf.check_tag(rowindex)
             if exists:
-                self.logger.info("Tag %s found." % self.d.labels[rowindex]['label'])
+                self.logger.info("Tag %s found." % self.d.labels[rowindex]['tag'])
                 event.set_image(Gtk.Image(stock="gtk-apply"))
             else:
-                self.logger.warning("Tag %s not found." % self.d.labels[rowindex]['label'])
+                self.logger.warning("Tag %s not found." % self.d.labels[rowindex]['tag'])
                 event.set_image(Gtk.Image(stock="gtk-dialog-warning"))
         else:
             exists = False

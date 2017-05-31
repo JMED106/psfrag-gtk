@@ -87,7 +87,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-f', '--epsfile', default=None, dest='epsfile', type=str,
                     help='.eps file in which perform the substitutions.')
 # The default substitution file will be in the same directory as the script.
-parser.add_argument('-s', '--subs', default='%s/subs.tex' % scriptdir, dest='subs', type=str,
+parser.add_argument('-s', '--subs', default=None, dest='subs', type=str,
                     help='.tex file where the substitutions are located.')
 parser.add_argument('-db', '--debug', default="DEBUG", dest='db', metavar='<debug>',
                     choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -122,18 +122,15 @@ if args['nogui']:
         logger.error("Select a .eps file using -f option.")
         exit(-1)
     if data.tags:
-        for tag, rep in zip(data.tags, data.reps):
-            if len(data.labels) == 1:
-                data.labels[0]['label'] = tag
-                data.labels[0]['latex'] = rep
-            else:
-                data.labels.append({'label': tag, 'latex': rep})
+        filename = "%s/subs-%s.tex" % (data.epsdir, data.epsname)
+        psfrag.subsname = filename
+        logger.debug("Copying substitution file in %s ..." % filename)
+        os.popen('cp %s %s' % (data.subspath, filename))
     else:
         logger.error("No substitutions to be made. Exiting.")
         exit(1)
 
     logger.info("Replacing ...")
-    psfrag.create_subs()
     psfrag.do_replace()
     logger.info("Done!")
 else:
