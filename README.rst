@@ -16,7 +16,7 @@ INSTALLATION
 
 Download the project and uncompress it into any directory:
 
-https://github.com/JMED106/pypsfrag/archive/v0.1.zip
+https://github.com/JMED106/pypsfrag/archive/v0.2.zip
 
 
 It does not require installation but some python dependencies need to be fulfilled:
