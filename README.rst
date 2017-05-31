@@ -74,6 +74,10 @@ To avoid loading any default substitutions, use -s None (in graphical interface)
 
 $ pypsfrag -f example/example.eps -s None
 
+Command line execution:
+***********************
+
+$ pypsfrag -f example/example.eps -s subs.tex
 
 
 
