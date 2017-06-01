@@ -39,7 +39,7 @@ except AttributeError:
     logging.exception("pygobject version too old.")
 gi.require_version('Gtk', '3.0')
 try:
-    from gi.repository import Gtk, Gdk, GObject
+    from gi.repository import Gtk
 except (ImportError, RuntimeError):
     logging.exception("Requires pygobject to be installed.")
 
