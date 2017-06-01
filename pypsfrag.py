@@ -23,10 +23,26 @@ import sys
 import logging.config
 from colorlog import ColoredFormatter
 import os
-# import gi
-# gi.require_version('Gtk', '3.10')
-from gi.repository import Gtk
 from gui import MainGui, Data, PSFrag
+try:
+    import gi
+except ImportError:
+    logging.exception("Requires pygobject to be installed.")
+    gi = None
+    exit(1)
+
+try:
+    gi.require_version("Gtk", "3.0")
+except ValueError:
+    logging.exception("Requires gtk3 development files to be installed.")
+except AttributeError:
+    logging.exception("pygobject version too old.")
+gi.require_version('Gtk', '3.0')
+try:
+    from gi.repository import Gtk, Gdk, GObject
+except (ImportError, RuntimeError):
+    logging.exception("Requires pygobject to be installed.")
+
 
 __author__ = 'Jose M. Esnaola Acebes'
 

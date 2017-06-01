@@ -20,11 +20,40 @@ import os
 import re
 import threading
 import urllib
-# import gi
-# gi.require_version('Gtk', '3.10')
-from gi.repository import Gtk, GObject, Gdk
-
 import logging
+
+try:
+    import gi
+except ImportError:
+    logging.exception("Requires pygobject to be installed.")
+    gi = None
+    exit(1)
+
+try:
+    gi.require_version("Gtk", "3.0")
+except ValueError:
+    logging.exception("Requires gtk3 development files to be installed.")
+except AttributeError:
+    logging.exception("pygobject version too old.")
+
+try:
+    gi.require_version("Gdk", "3.0")
+except ValueError:
+    logging.exception("Requires gdk development files to be installed.")
+except AttributeError:
+    logging.exception("pygobject version too old.")
+
+try:
+    gi.require_version("GObject", "2.0")
+except ValueError:
+    logging.exception("Requires GObject development files to be installed.")
+except AttributeError:
+    logging.exception("pygobject version too old.")
+
+try:
+    from gi.repository import Gtk, Gdk, GObject
+except (ImportError, RuntimeError):
+    logging.exception("Requires pygobject to be installed.")
 
 logging.getLogger('gui').addHandler(logging.NullHandler())
 TARGET_TYPE_URI_LIST = 0
@@ -221,7 +250,7 @@ class Data:
             return None
 
 
-class PSFrag:
+class PSFrag(object):
     def __init__(self, data=None):
         self.logger = logging.getLogger('gui.PSFrag')
         if data is None:
@@ -553,11 +582,11 @@ class MainGui:
         """ Add a new row to the list box, identical to the previous ones """
         self.logger.debug('Button %s pressed' % event)
         newbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)  # The box containing the widgets
-        row = self.listbox.insert(newbox, -1)                     # The new listboxrow
+        row = self.listbox.insert(newbox, -1)  # The new listboxrow
         row_index = len(self.d.labels) + 1
 
         # First child
-        label_combobox = Gtk.ComboBoxText.new_with_entry()        # The tag combobox with entry
+        label_combobox = Gtk.ComboBoxText.new_with_entry()  # The tag combobox with entry
         label_entry = label_combobox.get_children()[0]
         label_entry.connect("activate", self.on_entry_activate)
         label_entry.set_name("tag%d" % row_index)
