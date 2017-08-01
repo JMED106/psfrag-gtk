@@ -522,6 +522,34 @@ class MainGui:
         path = path.strip('\r\n\x00')  # remove \r\n and NULL
         return path
 
+    @staticmethod
+    def find_widget_down(source, target):
+        """ Method to find a successor child of a given source widget"""
+        for child in source.get_children():
+            if child.get_name() == target:
+                logging.debug("Target child found.")
+                return child
+            else:
+                try:
+                    targetchild = MainGui.find_widget_down(child, target)
+                    if targetchild:
+                        return targetchild
+                except AttributeError:
+                    logging.debug("Target child not found in this branch.")
+
+    @staticmethod
+    def find_widget_up(source, target):
+        """ Method for finding an ancestor widget from a source widget."""
+        parent = source
+        while parent.get_name() != target:
+            parent = parent.get_parent()
+            try:
+                parent.get_name()
+            except AttributeError:
+                logging.warning("Target widget %s not in this branch." % target)
+                return None
+        return parent
+
     def on_eps_toggled(self, event):
         self.logger.debug('Button %s pressed' % event)
         self.d.eps = not self.d.eps
@@ -552,17 +580,12 @@ class MainGui:
         name = entry.get_name()
         self.logger.debug('Entry widget name: %s' % name)
 
-        parent = entry.get_parent()
-        self.logger.debug('Parent of %s: %s' % (name, parent.get_name()))
-        if parent.get_name() in ('GtkComboBox', 'GtkComboBoxText'):
-            listboxrow = parent.get_parent().get_parent()
-        elif parent.get_name() == 'GtkBox':
-            listboxrow = parent.get_parent()
-        else:
-            self.logger.error('Widget not registered')
-            return 1
+        listboxrow = self.find_widget_up(entry, 'GtkListBoxRow')
 
-        rowindex = listboxrow.get_index()
+        if listboxrow:
+            rowindex = listboxrow.get_index()
+        else:
+            return  -1
         self.listbox.select_row(listboxrow)
         tag = name[0:3]
         if tag == 'opt':
