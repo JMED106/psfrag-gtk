@@ -326,47 +326,62 @@ class PSFrag(object):
 
         # Compile latex file
         self.logger.debug("Compiling LaTeX ...")
-        os.popen('latex -output-directory=%s -shell-escape -interaction=nonstopmode -file-line-error  %s '
+        p = os.popen('latex -output-directory=%s -shell-escape -interaction=nonstopmode -file-line-error  %s '
                  '| grep ".*:[0-9]*:.*"' % (filedir, latexname))
+        p.close()
         # os.popen('latex %s' % latexname)
         self.logger.debug("Done!")
         self.logger.debug("Transforming dvi -> ps -> pdf -> pdf-crop -> ps-crop -> eps-crop ...")
-        os.popen('dvips -o %s.ps -q* %s.dvi' % (filename, filename))
-        os.popen('ps2pdf %s.ps %s.pdf' % (filename, filename))
-        os.popen('pdfcrop --noverbose %s.pdf | grep nothing' % filename)
-        os.popen('pdftops -q %s-crop.pdf' % filename)
-        os.popen('ps2eps -q %s-crop.ps' % filename)
+        p = os.popen('dvips -o %s.ps -q* %s.dvi' % (filename, filename))
+        p.close()
+        p = os.popen('ps2pdf %s.ps %s.pdf' % (filename, filename))
+        p.close()
+        p = os.popen('pdfcrop --noverbose %s.pdf | grep nothing' % filename)
+        p.close()
+        p = os.popen('pdftops -q %s-crop.pdf' % filename)
+        p.close()
+        p = os.popen('ps2eps -q %s-crop.ps' % filename)
+        p.close()
         self.logger.debug("Done!")
 
         self.logger.debug("Removing auxiliary files ...")
-        os.popen('rm %s.dvi %s.pdf %s.ps %s-crop.ps' % (filename, filename, filename, filename))
-        os.popen('rm %s.aux %s.log' % (filename, filename))
+        p = os.popen('rm %s.dvi %s.pdf %s.ps %s-crop.ps' % (filename, filename, filename, filename))
+        p.close()
+        p = os.popen('rm %s.aux %s.log' % (filename, filename))
+        p.close()
         self.logger.debug("Done!")
 
         if self.d.svg:
             self.logger.info("Creating SVG file ...")
-            os.popen('pdf2svg %s-crop.pdf %s-latex.svg' % (filename, filename))
+            p = os.popen('pdf2svg %s-crop.pdf %s-latex.svg' % (filename, filename))
+            p.close()
             self.logger.info("Done!")
 
         if self.d.png:
             self.logger.info("Creating png file, with density %d ..." % self.d.density)
-            os.popen('convert -density %d %s-crop.pdf %s-latex.png' % (self.d.density, filename, filename))
+            p = os.popen('convert -density %d %s-crop.pdf %s-latex.png' % (self.d.density, filename, filename))
+            p.close()
             self.logger.info("Done!")
 
         if self.d.pdf:
             self.logger.info("Creating pdf file ...")
-            os.popen('mv %s-crop.pdf %s-latex.pdf' % (filename, filename))
+            p = os.popen('mv %s-crop.pdf %s-latex.pdf' % (filename, filename))
+            p.close()
             self.logger.info("Done!")
         else:
-            os.popen('rm %s-crop.pdf' % filename)
+            p = os.popen('rm %s-crop.pdf' % filename)
+            p.close()
 
         if self.d.eps:
-            os.popen('mv %s-crop.eps %s-latex.eps' % (filename, filename))
+            p = os.popen('mv %s-crop.eps %s-latex.eps' % (filename, filename))
+            p.close()
             self.logger.info("New EPS file is %s-latex.eps." % filename)
         else:
-            os.popen('rm %s-crop.eps' % filename)
+            p = os.popen('rm %s-crop.eps' % filename)
+            p.close()
 
         self.logger.debug("All jobs finished.")
+        return 0
 
 
 class MainGui:
@@ -385,7 +400,7 @@ class MainGui:
         scriptdir = os.path.dirname(scriptpath)
 
         self.builder = Gtk.Builder()
-        self.builder.add_from_file("%s/v0.312.glade" % scriptdir)
+        self.builder.add_from_file("%s/v0.314.glade" % scriptdir)
 
         self.window = self.builder.get_object("window1")
         self.window.connect("delete-event", Gtk.main_quit)
@@ -714,10 +729,11 @@ class MainGui:
     def on_replace_clicked(self, event):
         self.logger.debug('Button %s pressed' % event)
         if self.d.epspath:
-            self.repbutton.set_image(Gtk.Image(stock='gtk-dialog-warning'))
+            # self.repbutton.set_image(Gtk.Image(stock='gtk-dialog-warning'))
             self.timeout_id = GObject.timeout_add(50, self.on_timeout, True)
-            thread = threading.Thread(target=self.outside_task)
-            thread.start()
+            self.thread = threading.Thread(target=self.outside_task)
+            self.thread.start()
+            self.watch = GObject.timeout_add(500, self.watch_thread, True)
         else:
             self.logger.warning("There is no EPS file loaded.")
             dialog = Gtk.MessageDialog(self.window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.CANCEL,
@@ -729,13 +745,21 @@ class MainGui:
         self.pbar.pulse()
         return user_data
 
+    def watch_thread(self, user_data):
+        if not self.thread.isAlive():
+            self.thread.join()
+            return False
+        else:
+            return user_data
+
     def outside_task(self):
         self.pf.create_subs()
         self.pf.do_replace()
         self.logger.info("Replacement done.")
-        self.repbutton.set_image(Gtk.Image(stock='gtk-apply'))
+        # self.repbutton.set_image(Gtk.Image(stock='gtk-apply'))
         GObject.source_remove(self.timeout_id)
         self.pbar.set_fraction(0.0)
+
 
     def update_tag_list(self, tags, listtags=None):
         if listtags is not None:

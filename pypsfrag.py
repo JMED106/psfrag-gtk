@@ -39,7 +39,7 @@ except AttributeError:
     logging.exception("pygobject version too old.")
 gi.require_version('Gtk', '3.0')
 try:
-    from gi.repository import Gtk
+    from gi.repository import Gtk, GObject
 except (ImportError, RuntimeError):
     logging.exception("Requires pygobject to be installed.")
 
@@ -150,6 +150,7 @@ if args['nogui']:
     psfrag.do_replace()
     logger.info("Done!")
 else:
+    GObject.threads_init()
     mg = MainGui(data, psfrag)
     mg.window.show_all()
     Gtk.main()
